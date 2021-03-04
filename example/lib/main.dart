@@ -145,7 +145,10 @@ class _MyHomePageState extends State<MyHomePage> {
       alignment: WrapAlignment.spaceEvenly,
       children: <Widget>[
         button("分时", onPressed: () => chartType = ChartType.M),
-        button("k线", onPressed: () => chartType = ChartType.K),
+        button("k线", onPressed: () {
+          chartType = ChartType.K;
+          isLine = !isLine;
+        }),
         button("Depth", onPressed: () => chartType = ChartType.D),
         button("MA", onPressed: () => _mainState = MainState.MA),
         button("BOLL", onPressed: () => _mainState = MainState.BOLL),
@@ -198,7 +201,7 @@ class _MyHomePageState extends State<MyHomePage> {
         final today = DateTime(now.year, now.month, now.day);
         return element.time > today.millisecondsSinceEpoch;
       });
-      leftDayClose = datas[i-1].close;
+      leftDayClose = datas[i - 1].close;
       print(leftDayClose);
       datas.removeWhere((element) {
         final now = DateTime.now();

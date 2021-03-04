@@ -15,7 +15,11 @@ class MinuteChartPainter extends CustomPainter {
   double mMainMaxValue = double.minPositive, mMainMinValue = double.maxFinite;
   double mVolMaxValue = double.minPositive, mVolMinValue = double.maxFinite;
 
+  double scaleY;
+
   Rect mMainRect, mSecondaryRect;
+
+  int fixedLength = 2;
 
   MinuteChartPainter(this.mDatas, this.leftDayClose) {
     mClosePath ??= Path();
@@ -47,7 +51,8 @@ class MinuteChartPainter extends CustomPainter {
         mVolMinValue = min(mVolMinValue, item.vol);
       }
     }
-    double absv = max((mMainMaxValue - leftDayClose).abs(), (mMainMinValue - leftDayClose).abs());
+    double absv = max((mMainMaxValue - leftDayClose).abs(),
+        (mMainMinValue - leftDayClose).abs());
     mMainMaxValue = leftDayClose + absv;
     mMainMinValue = leftDayClose - absv;
   }
@@ -61,8 +66,13 @@ class MinuteChartPainter extends CustomPainter {
     mDrawWidth = mWidth;
     mPointWidth = mDrawWidth / 240;
     initRect(size);
+
+    scaleY = mMainRect.height / (mMainMaxValue - mMainMinValue);
+
     drawMainGrid(canvas);
     drawSecondaryGrid(canvas);
+    drawLeftText(canvas);
+    drawRightText(canvas);
 
     mClosePath.reset();
     for (int i = 0; i < mDatas.length; i++) {
@@ -126,6 +136,53 @@ class MinuteChartPainter extends CustomPainter {
     }
   }
 
+  void drawLeftText(canvas) {
+    var textStyle =
+        TextStyle(fontSize: 10.0, color: ChartColors.defaultTextColor);
+    final int gridRows = 4;
+    double rowSpace = mMainRect.height / gridRows;
+    for (int i = 0; i <= gridRows; i++) {
+      double value = (gridRows - i) * rowSpace / scaleY + mMainMinValue;
+
+      TextSpan span = TextSpan(text: "${format(value)}", style: textStyle);
+      TextPainter tp =
+          TextPainter(text: span, textDirection: TextDirection.ltr);
+      tp.layout();
+      if(i == 0) {
+        tp.paint(canvas, Offset(0, rowSpace * i));
+      } else if (i == gridRows){
+        tp.paint(canvas, Offset(0, rowSpace * i - tp.height));
+      } else {
+        tp.paint(canvas, Offset(0, rowSpace * i - tp.height/2));
+      }
+
+    }
+  }
+
+  void drawRightText(canvas) {
+    var textStyle =
+    TextStyle(fontSize: 10.0, color: ChartColors.defaultTextColor);
+    final int gridRows = 4;
+    double rowSpace = mMainRect.height / gridRows;
+    for (int i = 0; i <= gridRows; i++) {
+      double value = (gridRows - i) * rowSpace / scaleY + mMainMinValue;
+      value = (value - leftDayClose) / leftDayClose * 100;
+
+      TextSpan span = TextSpan(text: "${format(value)}%", style: textStyle);
+      TextPainter tp =
+      TextPainter(text: span, textDirection: TextDirection.ltr);
+      tp.layout();
+      if(i == 0) {
+        tp.paint(canvas, Offset(mMainRect.width - tp.width, rowSpace * i));
+      } else if (i == gridRows){
+        tp.paint(canvas, Offset(mMainRect.width - tp.width, rowSpace * i - tp.height));
+      } else {
+        tp.paint(canvas, Offset(mMainRect.width - tp.width, rowSpace * i - tp.height/2));
+      }
+
+    }
+  }
+
   void initRect(Size size) {
     double secondaryHeight = size.height * 0.2;
 
@@ -134,5 +191,13 @@ class MinuteChartPainter extends CustomPainter {
     mMainRect = Rect.fromLTRB(0, 0, mWidth, mainHeight);
     mSecondaryRect = Rect.fromLTRB(
         0, mMainRect.bottom, mWidth, mMainRect.bottom + secondaryHeight);
+  }
+
+  String format(double n) {
+    if (n == null || n.isNaN) {
+      return "0.00";
+    } else {
+      return n.toStringAsFixed(fixedLength);
+    }
   }
 }
