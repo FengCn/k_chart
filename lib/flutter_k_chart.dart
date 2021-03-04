@@ -6,3 +6,4 @@ export 'entity/k_line_entity.dart'; //数据
 
 export 'entity/depth_entity.dart';
 export 'depth_chart.dart';
+export 'm_chart_widget.dart';

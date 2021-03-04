@@ -113,8 +113,10 @@ class _KChartWidgetState extends State<KChartWidget>
       },
       onHorizontalDragUpdate: (details) {
         if (isScale || isLongPress) return;
+        print("用户手指按下：${details.globalPosition}");
         mScrollX = (details.primaryDelta / mScaleX + mScrollX)
             .clamp(0.0, ChartPainter.maxScrollX);
+        print("用户手指按下：${details.globalPosition}, mScrollX: ${mScrollX}");
         notifyChanged();
       },
       onHorizontalDragEnd: (DragEndDetails details) {

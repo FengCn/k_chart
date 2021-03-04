@@ -8,6 +8,8 @@ import 'package:http/http.dart' as http;
 
 void main() => runApp(MyApp());
 
+enum ChartType { K, M, D }
+
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -32,18 +34,20 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   List<KLineEntity> datas;
+  double leftDayClose;
   bool showLoading = true;
   MainState _mainState = MainState.MA;
   bool _volHidden = false;
   SecondaryState _secondaryState = SecondaryState.MACD;
   bool isLine = true;
+  ChartType chartType = ChartType.K;
   bool isChinese = true;
   List<DepthEntity> _bids, _asks;
 
   @override
   void initState() {
     super.initState();
-    getData('1day');
+    getData('1');
     rootBundle.loadString('assets/depth.json').then((result) {
       final parseJson = json.decode(result);
       Map tick = parseJson['tick'];
@@ -91,20 +95,38 @@ class _MyHomePageState extends State<MyHomePage> {
       body: ListView(
         children: <Widget>[
           Stack(children: <Widget>[
-            Container(
-              height: 450,
-              width: double.infinity,
-              child: KChartWidget(
-                datas,
-                isLine: isLine,
-                mainState: _mainState,
-                volHidden: _volHidden,
-                secondaryState: _secondaryState,
-                fixedLength: 2,
-                timeFormat: TimeFormat.YEAR_MONTH_DAY,
-                isChinese: isChinese,
-              ),
-            ),
+            if (chartType == ChartType.K) ...[
+              Container(
+                height: 450,
+                width: double.infinity,
+                child: KChartWidget(
+                  datas,
+                  isLine: isLine,
+                  mainState: _mainState,
+                  volHidden: _volHidden,
+                  secondaryState: _secondaryState,
+                  fixedLength: 2,
+                  timeFormat: TimeFormat.YEAR_MONTH_DAY,
+                  isChinese: isChinese,
+                ),
+              )
+            ] else if (chartType == ChartType.M) ...[
+              Container(
+                height: 450,
+                width: double.infinity,
+                child: MChartWidget(
+                  datas,
+                  leftDayClose,
+                  subState: SubState.Vol,
+                ),
+              )
+            ] else if (chartType == ChartType.D) ...[
+              Container(
+                height: 230,
+                width: double.infinity,
+                child: DepthChart(_bids, _asks),
+              )
+            ],
             if (showLoading)
               Container(
                   width: double.infinity,
@@ -113,11 +135,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: CircularProgressIndicator()),
           ]),
           buildButtons(),
-          Container(
-            height: 230,
-            width: double.infinity,
-            child: DepthChart(_bids, _asks),
-          )
         ],
       ),
     );
@@ -127,8 +144,9 @@ class _MyHomePageState extends State<MyHomePage> {
     return Wrap(
       alignment: WrapAlignment.spaceEvenly,
       children: <Widget>[
-        button("分时", onPressed: () => isLine = true),
-        button("k线", onPressed: () => isLine = false),
+        button("分时", onPressed: () => chartType = ChartType.M),
+        button("k线", onPressed: () => chartType = ChartType.K),
+        button("Depth", onPressed: () => chartType = ChartType.D),
         button("MA", onPressed: () => _mainState = MainState.MA),
         button("BOLL", onPressed: () => _mainState = MainState.BOLL),
         button("隐藏", onPressed: () => _mainState = MainState.NONE),
@@ -137,7 +155,8 @@ class _MyHomePageState extends State<MyHomePage> {
         button("RSI", onPressed: () => _secondaryState = SecondaryState.RSI),
         button("WR", onPressed: () => _secondaryState = SecondaryState.WR),
         button("隐藏副视图", onPressed: () => _secondaryState = SecondaryState.NONE),
-        button(_volHidden ? "显示成交量" : "隐藏成交量", onPressed: () => _volHidden = !_volHidden),
+        button(_volHidden ? "显示成交量" : "隐藏成交量",
+            onPressed: () => _volHidden = !_volHidden),
         button("切换中英文", onPressed: () => isChinese = !isChinese),
       ],
     );
@@ -158,14 +177,34 @@ class _MyHomePageState extends State<MyHomePage> {
   void getData(String period) {
     Future<String> future = getIPAddress('$period');
     future.then((result) {
-      Map parseJson = json.decode(result);
-      List list = parseJson['data'];
+      List list = json.decode(result);
       datas = list
-          .map((item) => KLineEntity.fromJson(item))
+          .map((item) => KLineEntity.fromCustom(
+              open: double.parse(item['open'] as String),
+              close: double.parse(item['close'] as String),
+              low: double.parse(item['low'] as String),
+              high: double.parse(item['high'] as String),
+              vol: double.parse(item['volume'] as String),
+              amount: double.parse(item['volume'] as String),
+              time: DateTime.parse(item['day'] as String)
+                  .millisecondsSinceEpoch
+                  .toInt()))
           .toList()
-          .reversed
+          //.reversed
           .toList()
           .cast<KLineEntity>();
+      int i = datas.indexWhere((element) {
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        return element.time > today.millisecondsSinceEpoch;
+      });
+      leftDayClose = datas[i-1].close;
+      print(leftDayClose);
+      datas.removeWhere((element) {
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        return element.time < today.millisecondsSinceEpoch;
+      });
       DataUtil.calculate(datas);
       showLoading = false;
       setState(() {});
@@ -179,7 +218,8 @@ class _MyHomePageState extends State<MyHomePage> {
   //获取火币数据，需要翻墙
   Future<String> getIPAddress(String period) async {
     var url =
-        'https://api.huobi.pro/market/history/kline?period=${period ?? '1day'}&size=300&symbol=btcusdt';
+        'https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData?symbol=sh000001&scale=${period ?? '1'}&ma=no&datalen=240';
+    //var url = 'https://api.huobi.pro/market/history/kline?period=${period ?? '1day'}&size=300&symbol=btcusdt';
     String result;
     var response = await http.get(url);
     if (response.statusCode == 200) {
