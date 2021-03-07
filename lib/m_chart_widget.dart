@@ -44,8 +44,12 @@ class _MChartWidgetState extends State<MChartWidget> {
         notifyChanged();
       },
       onLongPressEnd: (details) {
-        isLongPress = false;
-        notifyChanged();
+        //延时1000毫秒执行
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          isLongPress = false;
+          notifyChanged();
+
+        });
       },
       child: Stack(
         children: [

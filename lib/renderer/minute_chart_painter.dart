@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:k_chart/entity/k_line_entity.dart';
+import 'package:k_chart/utils/date_format_util.dart';
 
 import '../chart_style.dart';
 
@@ -23,6 +24,8 @@ class MinuteChartPainter extends CustomPainter {
   Rect mTopRect, mMainRect, mLableXRect, mSecondaryRect;
 
   int fixedLength = 2;
+
+  List<String> mFormats = [yyyy, '-', mm, '-', dd, ' ', HH, ':', nn]; //格式化时间
 
   MinuteChartPainter(this.mDatas, this.leftDayClose, this.selectPosition,
       {this.isLongPress}) {
@@ -79,6 +82,7 @@ class MinuteChartPainter extends CustomPainter {
     drawRightText(canvas);
     drawText(canvas);
     drawCrossLine(canvas, size);
+    drawCrossLineText(canvas, size);
 
     mClosePath.reset();
     for (int i = 0; i < mDatas.length; i++) {
@@ -208,7 +212,7 @@ class MinuteChartPainter extends CustomPainter {
     var span = TextSpan(children: [
       TextSpan(
           text:
-              "最新: ${format(displayData.close)} ${format(displayData.close - leftDayClose)} ${format((displayData.close - leftDayClose) / leftDayClose * 100)}%"),
+              "${selectedData == null? "最新": "数值"}: ${format(displayData.close)} ${format(displayData.close - leftDayClose)} ${format((displayData.close - leftDayClose) / leftDayClose * 100)}%"),
     ]);
 
     TextPainter tp = TextPainter(text: span, textDirection: TextDirection.ltr);
@@ -239,7 +243,33 @@ class MinuteChartPainter extends CustomPainter {
   }
 
   int calculateSelectedX(Offset posi) {
-    return Random().nextInt(mDatas.length - 1);
+    int mSelectIndex = indexOfSelectX(posi.dx);
+    return mSelectIndex;
+  }
+
+  int indexOfSelectX(double selectX) =>
+    _indexOfSelectX(selectX, 0, mDatas.length);
+
+  _indexOfSelectX(double selectX, int start, int end) {
+    if (end == start || end == -1) {
+      return start;
+    }
+    if (end - start == 1) {
+      double startValue = getX(start);
+      double endValue = getX(end);
+      return (selectX - startValue).abs() < (selectX - endValue).abs()
+          ? start
+          : end;
+    }
+    int mid = start + (end - start) ~/ 2;
+    double midValue = getX(mid);
+    if (selectX < midValue) {
+      return _indexOfSelectX(selectX, start, mid);
+    } else if (selectX > midValue) {
+      return _indexOfSelectX(selectX, mid, end);
+    } else {
+      return mid;
+    }
   }
 
   ///画交叉线
@@ -256,15 +286,104 @@ class MinuteChartPainter extends CustomPainter {
         ..isAntiAlias = true;
 
       //画横线
-      canvas.drawLine(Offset(0, selectPosition.dy), Offset(mWidth, selectPosition.dy), paintX);
+      canvas.drawLine(Offset(0, selectPosition.dy),
+          Offset(mWidth, selectPosition.dy), paintX);
 
       //画竖线
-      canvas.drawLine(
-          Offset(selectPosition.dx, 0), Offset(selectPosition.dx, size.height), paintY);
+      canvas.drawLine(Offset(selectPosition.dx, mMainRect.top),
+          Offset(selectPosition.dx, size.height), paintX);
 
       canvas.drawCircle(selectPosition, 2.0, paintX);
     }
   }
+
+  void drawCrossLineText(Canvas canvas, Size size) {
+    if(!isLongPress) return;
+    Paint selectPointPaint = Paint()
+      ..isAntiAlias = true
+      ..strokeWidth = 0.5
+      ..color = ChartColors.selectFillColor;
+    Paint selectorBorderPaint = Paint()
+      ..isAntiAlias = true
+      ..strokeWidth = 0.5
+      ..style = PaintingStyle.stroke
+      ..color = ChartColors.selectBorderColor;
+
+    var index = calculateSelectedX(selectPosition);
+    KLineEntity point = mDatas[index];
+    double volume = mMainMaxValue - (selectPosition.dy - mTopRect.height) * ( (mMainMaxValue - mMainMinValue) /mMainRect.height);
+
+    TextPainter tp = getTextPainter(format(volume), Colors.white);
+    double textHeight = tp.height;
+    double textWidth = tp.width;
+
+    double w1 = 5;
+    double w2 = 3;
+    double r = textHeight / 2 + w2;
+    double y = selectPosition.dy;
+    double x;
+    bool isLeft = false;
+    if (getX(index) < mWidth / 2) {
+      isLeft = false;
+      x = 1;
+      Path path = new Path();
+      path.moveTo(x, y - r);
+      path.lineTo(x, y + r);
+      path.lineTo(textWidth + 2 * w1, y + r);
+      path.lineTo(textWidth + 2 * w1 + w2, y);
+      path.lineTo(textWidth + 2 * w1, y - r);
+      path.close();
+      canvas.drawPath(path, selectPointPaint);
+      canvas.drawPath(path, selectorBorderPaint);
+      tp.paint(canvas, Offset(x + w1, y - textHeight / 2));
+    } else {
+      isLeft = true;
+      x = mWidth - textWidth - 1 - 2 * w1 - w2;
+      Path path = new Path();
+      path.moveTo(x, y);
+      path.lineTo(x + w2, y + r);
+      path.lineTo(mWidth - 2, y + r);
+      path.lineTo(mWidth - 2, y - r);
+      path.lineTo(x + w2, y - r);
+      path.close();
+      canvas.drawPath(path, selectPointPaint);
+      canvas.drawPath(path, selectorBorderPaint);
+      tp.paint(canvas, Offset(x + w1 + w2, y - textHeight / 2));
+    }
+
+    TextPainter dateTp = getTextPainter(getDate(point.time), Colors.white);
+    textWidth = dateTp.width;
+    r = textHeight / 2;
+    x = getX(index);
+    y = mMainRect.bottom;
+
+    if (x < textWidth + 2 * w1) {
+      x = 1 + textWidth / 2 + w1;
+    } else if (mWidth - x < textWidth + 2 * w1) {
+      x = mWidth - 1 - textWidth / 2 - w1;
+    }
+    double baseLine = textHeight / 2;
+    canvas.drawRect(
+        Rect.fromLTRB(x - textWidth / 2 - w1, y, x + textWidth / 2 + w1,
+            y + baseLine + r),
+        selectPointPaint);
+    canvas.drawRect(
+        Rect.fromLTRB(x - textWidth / 2 - w1, y, x + textWidth / 2 + w1,
+            y + baseLine + r),
+        selectorBorderPaint);
+
+    dateTp.paint(canvas, Offset(x - textWidth / 2, y));
+  }
+
+  TextPainter getTextPainter(text, [color = ChartColors.defaultTextColor]) {
+    TextSpan span = TextSpan(text: "$text", style: TextStyle(fontSize: 10.0, color: color));
+    TextPainter tp = TextPainter(text: span, textDirection: TextDirection.ltr);
+    tp.layout();
+    return tp;
+  }
+
+  String getDate(int date) =>
+      dateFormat(DateTime.fromMillisecondsSinceEpoch(date), mFormats);
 
   void initRect(Size size) {
     double topHeight = 30;
