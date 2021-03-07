@@ -16,14 +16,16 @@ class MinuteChartPainter extends CustomPainter {
   double mVolMaxValue = double.minPositive, mVolMinValue = double.maxFinite;
 
   double scaleY;
-  double scaleX = 1.0, scrollX = 0.0, selectX;
+  double scaleX = 1.0, scrollX = 0.0;
   bool isLongPress = false;
+  Offset selectPosition = Offset.zero;
 
   Rect mTopRect, mMainRect, mLableXRect, mSecondaryRect;
 
   int fixedLength = 2;
 
-  MinuteChartPainter(this.mDatas, this.leftDayClose, this.selectX, {this.isLongPress}) {
+  MinuteChartPainter(this.mDatas, this.leftDayClose, this.selectPosition,
+      {this.isLongPress}) {
     mClosePath ??= Path();
     mLinePaint ??= Paint()
       ..isAntiAlias = true
@@ -76,6 +78,7 @@ class MinuteChartPainter extends CustomPainter {
     drawLeftText(canvas);
     drawRightText(canvas);
     drawText(canvas);
+    drawCrossLine(canvas, size);
 
     mClosePath.reset();
     for (int i = 0; i < mDatas.length; i++) {
@@ -98,9 +101,10 @@ class MinuteChartPainter extends CustomPainter {
   }
 
   double getX(int position) => position * mPointWidth + mPointWidth / 2;
-  double getY(double volume) => mMainRect.top +
+  double getY(double volume) =>
+      mMainRect.top +
       (mMainMaxValue - volume) *
-      (mMainRect.height / (mMainMaxValue - mMainMinValue));
+          (mMainRect.height / (mMainMaxValue - mMainMinValue));
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
@@ -151,20 +155,20 @@ class MinuteChartPainter extends CustomPainter {
       TextPainter tp =
           TextPainter(text: span, textDirection: TextDirection.ltr);
       tp.layout();
-      if(i == 0) {
+      if (i == 0) {
         tp.paint(canvas, Offset(0, mMainRect.top + rowSpace * i));
-      } else if (i == gridRows){
+      } else if (i == gridRows) {
         tp.paint(canvas, Offset(0, mMainRect.top + rowSpace * i - tp.height));
       } else {
-        tp.paint(canvas, Offset(0, mMainRect.top + rowSpace * i - tp.height/2));
+        tp.paint(
+            canvas, Offset(0, mMainRect.top + rowSpace * i - tp.height / 2));
       }
-
     }
   }
 
   void drawRightText(canvas) {
     var textStyle =
-    TextStyle(fontSize: 10.0, color: ChartColors.defaultTextColor);
+        TextStyle(fontSize: 10.0, color: ChartColors.defaultTextColor);
     final int gridRows = 4;
     double rowSpace = mMainRect.height / gridRows;
     for (int i = 0; i <= gridRows; i++) {
@@ -173,51 +177,93 @@ class MinuteChartPainter extends CustomPainter {
 
       TextSpan span = TextSpan(text: "${format(value)}%", style: textStyle);
       TextPainter tp =
-      TextPainter(text: span, textDirection: TextDirection.ltr);
+          TextPainter(text: span, textDirection: TextDirection.ltr);
       tp.layout();
-      if(i == 0) {
-        tp.paint(canvas, Offset(mMainRect.width - tp.width, mMainRect.top + rowSpace * i));
-      } else if (i == gridRows){
-        tp.paint(canvas, Offset(mMainRect.width - tp.width, mMainRect.top + rowSpace * i - tp.height));
+      if (i == 0) {
+        tp.paint(canvas,
+            Offset(mMainRect.width - tp.width, mMainRect.top + rowSpace * i));
+      } else if (i == gridRows) {
+        tp.paint(
+            canvas,
+            Offset(mMainRect.width - tp.width,
+                mMainRect.top + rowSpace * i - tp.height));
       } else {
-        tp.paint(canvas, Offset(mMainRect.width - tp.width, mMainRect.top + rowSpace * i - tp.height/2));
+        tp.paint(
+            canvas,
+            Offset(mMainRect.width - tp.width,
+                mMainRect.top + rowSpace * i - tp.height / 2));
       }
-
     }
   }
 
   void drawText(canvas) {
     var selectedData;
-    if(isLongPress){
-      var index = calculateSelectedX(selectX);
+    if (isLongPress) {
+      var index = calculateSelectedX(selectPosition);
       selectedData = mDatas[index];
     }
 
-    KLineEntity displayData = selectedData != null? selectedData : mDatas.last;
+    KLineEntity displayData = selectedData != null ? selectedData : mDatas.last;
 
     var span = TextSpan(children: [
-      TextSpan(text: "最新: ${format(displayData.close)} ${format(displayData.close - leftDayClose)} ${format((displayData.close - leftDayClose) / leftDayClose * 100)}%"),
+      TextSpan(
+          text:
+              "最新: ${format(displayData.close)} ${format(displayData.close - leftDayClose)} ${format((displayData.close - leftDayClose) / leftDayClose * 100)}%"),
     ]);
 
     TextPainter tp = TextPainter(text: span, textDirection: TextDirection.ltr);
     tp.layout();
-    tp.paint(canvas, Offset(8.0, (mTopRect.height - tp.height) /2 ));
+    tp.paint(canvas, Offset(8.0, (mTopRect.height - tp.height) / 2));
 
-    TextPainter tp930 = TextPainter(text: TextSpan(text: "9.30"), textDirection: TextDirection.ltr);
+    TextPainter tp930 = TextPainter(
+        text: TextSpan(text: "9.30"), textDirection: TextDirection.ltr);
     tp930.layout();
-    tp930.paint(canvas, Offset(0, mLableXRect.top + (mLableXRect.height - tp930.height) /2));
+    tp930.paint(canvas,
+        Offset(0, mLableXRect.top + (mLableXRect.height - tp930.height) / 2));
 
-    TextPainter tp11301300 = TextPainter(text: TextSpan(text: "11:30/13:00"), textDirection: TextDirection.ltr);
+    TextPainter tp11301300 = TextPainter(
+        text: TextSpan(text: "11:30/13:00"), textDirection: TextDirection.ltr);
     tp11301300.layout();
-    tp11301300.paint(canvas, Offset((mLableXRect.width - tp11301300.width) /2, mLableXRect.top + (mLableXRect.height - tp930.height) /2));
+    tp11301300.paint(
+        canvas,
+        Offset((mLableXRect.width - tp11301300.width) / 2,
+            mLableXRect.top + (mLableXRect.height - tp930.height) / 2));
 
-    TextPainter tp1500 = TextPainter(text: TextSpan(text: "15.00"), textDirection: TextDirection.ltr);
+    TextPainter tp1500 = TextPainter(
+        text: TextSpan(text: "15.00"), textDirection: TextDirection.ltr);
     tp1500.layout();
-    tp1500.paint(canvas, Offset(mLableXRect.width - tp1500.width, mLableXRect.top + (mLableXRect.height - tp930.height) /2));
+    tp1500.paint(
+        canvas,
+        Offset(mLableXRect.width - tp1500.width,
+            mLableXRect.top + (mLableXRect.height - tp930.height) / 2));
   }
 
-  int calculateSelectedX(double selectX) {
-    return Random().nextInt(mDatas.length  -1);
+  int calculateSelectedX(Offset posi) {
+    return Random().nextInt(mDatas.length - 1);
+  }
+
+  ///画交叉线
+  void drawCrossLine(Canvas canvas, Size size) {
+    if (isLongPress) {
+      Paint paintX = Paint()
+        ..color = Colors.white
+        ..strokeWidth = ChartStyle.hCrossWidth
+        ..isAntiAlias = true;
+
+      Paint paintY = Paint()
+        ..color = Colors.white12
+        ..strokeWidth = ChartStyle.vCrossWidth
+        ..isAntiAlias = true;
+
+      //画横线
+      canvas.drawLine(Offset(0, selectPosition.dy), Offset(mWidth, selectPosition.dy), paintX);
+
+      //画竖线
+      canvas.drawLine(
+          Offset(selectPosition.dx, 0), Offset(selectPosition.dx, size.height), paintY);
+
+      canvas.drawCircle(selectPosition, 2.0, paintX);
+    }
   }
 
   void initRect(Size size) {
@@ -230,8 +276,10 @@ class MinuteChartPainter extends CustomPainter {
     mainHeight -= topHeight;
     mainHeight -= labelXHeight;
     mTopRect = Rect.fromLTRB(0, 0, mWidth, topHeight);
-    mMainRect = Rect.fromLTRB(0, mTopRect.bottom, mWidth, mTopRect.bottom + mainHeight);
-    mLableXRect = Rect.fromLTRB(0, mMainRect.bottom, mWidth, mMainRect.bottom + labelXHeight);
+    mMainRect =
+        Rect.fromLTRB(0, mTopRect.bottom, mWidth, mTopRect.bottom + mainHeight);
+    mLableXRect = Rect.fromLTRB(
+        0, mMainRect.bottom, mWidth, mMainRect.bottom + labelXHeight);
     mSecondaryRect = Rect.fromLTRB(
         0, mLableXRect.bottom, mWidth, mLableXRect.bottom + secondaryHeight);
   }

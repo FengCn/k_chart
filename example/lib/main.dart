@@ -196,18 +196,22 @@ class _MyHomePageState extends State<MyHomePage> {
           //.reversed
           .toList()
           .cast<KLineEntity>();
-      int i = datas.indexWhere((element) {
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
-        return element.time > today.millisecondsSinceEpoch;
-      });
+      int i = -1;
+      int loop = 0;
+      do {
+        i = datas.indexWhere((element) {
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          return element.time > today.millisecondsSinceEpoch - 8.64e+7 * loop;
+        });
+        if (i == -1) loop += 1;
+      } while (i == -1);
+
       leftDayClose = datas[i - 1].close;
       print(leftDayClose);
-      datas.removeWhere((element) {
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
-        return element.time < today.millisecondsSinceEpoch;
-      });
+
+      datas.removeRange(0, i - 1);
+
       DataUtil.calculate(datas);
       showLoading = false;
       setState(() {});

@@ -17,29 +17,31 @@ class MChartWidget extends StatefulWidget {
 }
 
 class _MChartWidgetState extends State<MChartWidget> {
-  double mScaleX = 1.0, mScrollX = 0.0, mSelectX = 0.0;
+  double mScaleX = 1.0, mScrollX = 0.0;
+  Offset mSelectPosition = Offset.zero;
 
   bool isLongPress = false;
 
   @override
   Widget build(BuildContext context) {
     if (widget.datas == null || widget.datas.isEmpty) {
-      mScrollX = mSelectX = 0.0;
+      mScrollX = 0.0;
       mScaleX = 1.0;
     }
     return GestureDetector(
       onLongPressStart: (details) {
         isLongPress = true;
-        if (mSelectX != details.globalPosition.dx) {
-          mSelectX = details.globalPosition.dx;
-          notifyChanged();
-        }
+        /*** convert globalPosition to local position
+        print(details.globalPosition.toString());
+        RenderBox getBox = context.findRenderObject();
+        var local = getBox.globalToLocal(details.globalPosition);
+        print(local.dx.toString() + "|" + local.dy.toString()); ***/
+        mSelectPosition = details.localPosition;
+        notifyChanged();
       },
       onLongPressMoveUpdate: (details) {
-        if (mSelectX != details.globalPosition.dx) {
-          mSelectX = details.globalPosition.dx;
-          notifyChanged();
-        }
+        mSelectPosition = details.localPosition;
+        notifyChanged();
       },
       onLongPressEnd: (details) {
         isLongPress = false;
@@ -50,11 +52,8 @@ class _MChartWidgetState extends State<MChartWidget> {
           CustomPaint(
             size: Size(double.infinity, double.infinity),
             painter: MinuteChartPainter(
-              widget.datas,
-              widget.leftDayClose,
-              mSelectX,
-              isLongPress: isLongPress
-            ),
+                widget.datas, widget.leftDayClose, mSelectPosition,
+                isLongPress: isLongPress),
           )
         ],
       ),
