@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:k_chart/flutter_k_chart.dart';
 import 'package:k_chart/k_chart_widget.dart';
+import 'package:k_chart/style_data.dart';
 import 'package:http/http.dart' as http;
 
 void main() => runApp(MyApp());
@@ -118,6 +119,12 @@ class _MyHomePageState extends State<MyHomePage> {
                   datas,
                   leftDayClose,
                   subState: SubState.Vol,
+                  styleData: StyleData(
+                    mLineColor: Theme.of(context).primaryColor,
+                    labelXColor: Theme.of(context).accentColor,
+                    hCrossColor: Theme.of(context).bottomAppBarColor,
+                    vCrossColor: Theme.of(context).accentColor
+                  ),
                 ),
               )
             ] else if (chartType == ChartType.D) ...[
@@ -210,7 +217,7 @@ class _MyHomePageState extends State<MyHomePage> {
       leftDayClose = datas[i - 1].close;
       print(leftDayClose);
 
-      datas.removeRange(0, i - 1);
+      datas.removeRange(0, i);
 
       DataUtil.calculate(datas);
       showLoading = false;

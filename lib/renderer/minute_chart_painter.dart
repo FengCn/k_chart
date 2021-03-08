@@ -2,16 +2,18 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:k_chart/entity/k_line_entity.dart';
+import 'package:k_chart/style_data.dart';
 import 'package:k_chart/utils/date_format_util.dart';
 
 import '../chart_style.dart';
 
 class MinuteChartPainter extends CustomPainter {
-  List<KLineEntity> mDatas;
-  double leftDayClose;
+  final List<KLineEntity> mDatas;
+  final double leftDayClose;
+  final StyleData styleData;
   double mWidth = 0.0, mDrawHeight = 0.0, mDrawWidth = 0.0, mPointWidth;
   Path mClosePath;
-  Paint mLinePaint, mGreenLinePaint, gridPaint, gridPaint2;
+  Paint mLinePaint, mRedPaint, mGreenLinePaint, gridPaint, gridPaint2;
 
   double mMainMaxValue = double.minPositive, mMainMinValue = double.maxFinite;
   double mVolMaxValue = double.minPositive, mVolMinValue = double.maxFinite;
@@ -27,12 +29,18 @@ class MinuteChartPainter extends CustomPainter {
 
   List<String> mFormats = [yyyy, '-', mm, '-', dd, ' ', HH, ':', nn]; //格式化时间
 
-  MinuteChartPainter(this.mDatas, this.leftDayClose, this.selectPosition,
+  MinuteChartPainter(
+      this.mDatas, this.leftDayClose, this.selectPosition, this.styleData,
       {this.isLongPress}) {
     mClosePath ??= Path();
     mLinePaint ??= Paint()
       ..isAntiAlias = true
-      ..color = ChartColors.depthSellColor
+      ..color = styleData.mLineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    mRedPaint ??= Paint()
+      ..isAntiAlias = true
+      ..color = Colors.red
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
     mGreenLinePaint ??= Paint()
@@ -98,7 +106,7 @@ class MinuteChartPainter extends CustomPainter {
               mPointWidth * i,
               mSecondaryRect.bottom -
                   mSecondaryRect.height * item.vol / mVolMaxValue),
-          item.close > item.open ? mLinePaint : mGreenLinePaint);
+          item.close > item.open ? mRedPaint : mGreenLinePaint);
     }
     //mClosePath.close();
     canvas.drawPath(mClosePath, mLinePaint);
@@ -210,9 +218,9 @@ class MinuteChartPainter extends CustomPainter {
     KLineEntity displayData = selectedData != null ? selectedData : mDatas.last;
 
     var span = TextSpan(children: [
-      TextSpan(
+      TextSpan(style: TextStyle(color: styleData.labelXColor),
           text:
-              "${selectedData == null? "最新": "数值"}: ${format(displayData.close)} ${format(displayData.close - leftDayClose)} ${format((displayData.close - leftDayClose) / leftDayClose * 100)}%"),
+              "${selectedData == null ? "最新" : "数值"}: ${format(displayData.close)} ${format(displayData.close - leftDayClose)} ${format((displayData.close - leftDayClose) / leftDayClose * 100)}%"),
     ]);
 
     TextPainter tp = TextPainter(text: span, textDirection: TextDirection.ltr);
@@ -220,13 +228,13 @@ class MinuteChartPainter extends CustomPainter {
     tp.paint(canvas, Offset(8.0, (mTopRect.height - tp.height) / 2));
 
     TextPainter tp930 = TextPainter(
-        text: TextSpan(text: "9.30"), textDirection: TextDirection.ltr);
+        text: TextSpan(style: TextStyle(color: styleData.labelXColor), text: "9.30"), textDirection: TextDirection.ltr);
     tp930.layout();
     tp930.paint(canvas,
         Offset(0, mLableXRect.top + (mLableXRect.height - tp930.height) / 2));
 
     TextPainter tp11301300 = TextPainter(
-        text: TextSpan(text: "11:30/13:00"), textDirection: TextDirection.ltr);
+        text: TextSpan(style: TextStyle(color: styleData.labelXColor), text: "11:30/13:00"), textDirection: TextDirection.ltr);
     tp11301300.layout();
     tp11301300.paint(
         canvas,
@@ -234,7 +242,7 @@ class MinuteChartPainter extends CustomPainter {
             mLableXRect.top + (mLableXRect.height - tp930.height) / 2));
 
     TextPainter tp1500 = TextPainter(
-        text: TextSpan(text: "15.00"), textDirection: TextDirection.ltr);
+        text: TextSpan(style: TextStyle(color: styleData.labelXColor), text: "15.00"), textDirection: TextDirection.ltr);
     tp1500.layout();
     tp1500.paint(
         canvas,
@@ -248,7 +256,7 @@ class MinuteChartPainter extends CustomPainter {
   }
 
   int indexOfSelectX(double selectX) =>
-    _indexOfSelectX(selectX, 0, mDatas.length);
+      _indexOfSelectX(selectX, 0, mDatas.length - 1);
 
   _indexOfSelectX(double selectX, int start, int end) {
     if (end == start || end == -1) {
@@ -276,29 +284,36 @@ class MinuteChartPainter extends CustomPainter {
   void drawCrossLine(Canvas canvas, Size size) {
     if (isLongPress) {
       Paint paintX = Paint()
-        ..color = Colors.white
-        ..strokeWidth = ChartStyle.hCrossWidth
+        ..color = styleData.hCrossColor
+        ..strokeWidth = 1.0
         ..isAntiAlias = true;
 
       Paint paintY = Paint()
-        ..color = Colors.white12
-        ..strokeWidth = ChartStyle.vCrossWidth
+        ..color = styleData.vCrossColor
+        ..strokeWidth = 1.0
         ..isAntiAlias = true;
+      if ((selectPosition.dy > mMainRect.top &&
+              selectPosition.dy < mMainRect.bottom) ||
+          (selectPosition.dy > mSecondaryRect.top &&
+              selectPosition.dy < mSecondaryRect.bottom)) {
+        //画横线
+        canvas.drawLine(Offset(0, selectPosition.dy),
+            Offset(mWidth, selectPosition.dy), paintX);
+      }
 
-      //画横线
-      canvas.drawLine(Offset(0, selectPosition.dy),
-          Offset(mWidth, selectPosition.dy), paintX);
-
+      double restrictedDx = selectPosition.dx > mDatas.length * mPointWidth
+          ? mDatas.length * mPointWidth
+          : selectPosition.dx;
       //画竖线
-      canvas.drawLine(Offset(selectPosition.dx, mMainRect.top),
-          Offset(selectPosition.dx, size.height), paintX);
+      canvas.drawLine(Offset(restrictedDx, mMainRect.top),
+          Offset(restrictedDx, size.height), paintY);
 
       canvas.drawCircle(selectPosition, 2.0, paintX);
     }
   }
 
   void drawCrossLineText(Canvas canvas, Size size) {
-    if(!isLongPress) return;
+    if (!isLongPress) return;
     Paint selectPointPaint = Paint()
       ..isAntiAlias = true
       ..strokeWidth = 0.5
@@ -311,7 +326,9 @@ class MinuteChartPainter extends CustomPainter {
 
     var index = calculateSelectedX(selectPosition);
     KLineEntity point = mDatas[index];
-    double volume = mMainMaxValue - (selectPosition.dy - mTopRect.height) * ( (mMainMaxValue - mMainMinValue) /mMainRect.height);
+    double volume = mMainMaxValue -
+        (selectPosition.dy - mTopRect.height) *
+            ((mMainMaxValue - mMainMinValue) / mMainRect.height);
 
     TextPainter tp = getTextPainter(format(volume), Colors.white);
     double textHeight = tp.height;
@@ -351,7 +368,8 @@ class MinuteChartPainter extends CustomPainter {
       tp.paint(canvas, Offset(x + w1 + w2, y - textHeight / 2));
     }
 
-    TextPainter dateTp = getTextPainter(getDate(point.time), Colors.white);
+    TextPainter dateTp =
+        getTextPainter(getDate(point.time), styleData.labelXColor);
     textWidth = dateTp.width;
     r = textHeight / 2;
     x = getX(index);
@@ -376,7 +394,8 @@ class MinuteChartPainter extends CustomPainter {
   }
 
   TextPainter getTextPainter(text, [color = ChartColors.defaultTextColor]) {
-    TextSpan span = TextSpan(text: "$text", style: TextStyle(fontSize: 10.0, color: color));
+    TextSpan span =
+        TextSpan(text: "$text", style: TextStyle(fontSize: 10.0, color: color));
     TextPainter tp = TextPainter(text: span, textDirection: TextDirection.ltr);
     tp.layout();
     return tp;

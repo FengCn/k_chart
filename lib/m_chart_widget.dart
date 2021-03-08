@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:k_chart/renderer/minute_chart_painter.dart';
+import 'package:k_chart/style_data.dart';
 
 import 'entity/k_line_entity.dart';
 
@@ -10,7 +11,11 @@ class MChartWidget extends StatefulWidget {
   final double leftDayClose;
   final SubState subState;
 
-  const MChartWidget(this.datas, this.leftDayClose, {this.subState});
+  StyleData styleData;
+
+  MChartWidget(this.datas, this.leftDayClose, {this.subState, this.styleData}) {
+    styleData ??= StyleData();
+  }
 
   @override
   _MChartWidgetState createState() => _MChartWidgetState();
@@ -48,15 +53,14 @@ class _MChartWidgetState extends State<MChartWidget> {
         Future.delayed(const Duration(milliseconds: 1000), () {
           isLongPress = false;
           notifyChanged();
-
         });
       },
       child: Stack(
         children: [
           CustomPaint(
             size: Size(double.infinity, double.infinity),
-            painter: MinuteChartPainter(
-                widget.datas, widget.leftDayClose, mSelectPosition,
+            painter: MinuteChartPainter(widget.datas, widget.leftDayClose,
+                mSelectPosition, widget.styleData,
                 isLongPress: isLongPress),
           )
         ],
