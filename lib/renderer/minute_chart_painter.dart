@@ -369,7 +369,7 @@ class MinuteChartPainter extends CustomPainter {
     }
 
     TextPainter dateTp =
-        getTextPainter(getDate(point.time), styleData.labelXColor);
+        getTextPainter(getDate(point.time), Colors.white);
     textWidth = dateTp.width;
     r = textHeight / 2;
     x = getX(index);
