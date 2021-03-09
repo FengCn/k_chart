@@ -48,7 +48,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    getData('1');
+    getData('7200');
     rootBundle.loadString('assets/depth.json').then((result) {
       final parseJson = json.decode(result);
       Map tick = parseJson['tick'];
@@ -120,11 +120,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   leftDayClose,
                   subState: SubState.Vol,
                   styleData: StyleData(
-                    mLineColor: Theme.of(context).primaryColor,
-                    labelXColor: Theme.of(context).accentColor,
-                    hCrossColor: Theme.of(context).bottomAppBarColor,
-                    vCrossColor: Theme.of(context).accentColor
-                  ),
+                      mLineColor: Theme.of(context).primaryColor,
+                      labelXColor: Theme.of(context).accentColor,
+                      hCrossColor: Theme.of(context).bottomAppBarColor,
+                      vCrossColor: Theme.of(context).accentColor),
                 ),
               )
             ] else if (chartType == ChartType.D) ...[
@@ -203,21 +202,23 @@ class _MyHomePageState extends State<MyHomePage> {
           //.reversed
           .toList()
           .cast<KLineEntity>();
-      int i = -1;
-      int loop = 0;
-      do {
-        i = datas.indexWhere((element) {
-          final now = DateTime.now();
-          final today = DateTime(now.year, now.month, now.day);
-          return element.time > today.millisecondsSinceEpoch - 8.64e+7 * loop;
-        });
-        if (i == -1) loop += 1;
-      } while (i == -1);
+      if (chartType == ChartType.M) {
+        int i = -1;
+        int loop = 0;
+        do {
+          i = datas.indexWhere((element) {
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            return element.time > today.millisecondsSinceEpoch - 8.64e+7 * loop;
+          });
+          if (i == -1) loop += 1;
+        } while (i == -1);
 
-      leftDayClose = datas[i - 1].close;
-      print(leftDayClose);
+        leftDayClose = datas[i - 1].close;
+        print(leftDayClose);
 
-      datas.removeRange(0, i);
+        datas.removeRange(0, i);
+      }
 
       DataUtil.calculate(datas);
       showLoading = false;
